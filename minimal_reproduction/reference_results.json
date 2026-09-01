@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "metric": "exact board accuracy: all 64 square labels must be correct",
+  "evaluation": "fp32; no filtering, legality correction, orientation normalization, or sample exclusion",
+  "released_checkpoint_independent_evaluation": {
+    "source_checkpoint_sha256": "958e30d0a982873cfaef7fd3267489c8e554a8b2e75a9fb8441a511cd5a0ff18",
+    "chessred_test": {
+      "n_boards": 2129,
+      "n_squares": 136256,
+      "n_squares_correct": 136245,
+      "per_square_accuracy": 0.9999192696101457,
+      "n_boards_exact": 2121,
+      "board_accuracy": 0.9962423673085956
+    },
+    "chesscog_test": {
+      "n_boards": 342,
+      "n_squares": 21888,
+      "n_squares_correct": 21883,
+      "per_square_accuracy": 0.9997715643274854,
+      "n_boards_exact": 337,
+      "board_accuracy": 0.9853801169590644
+    },
+    "slcc_test": {
+      "n_boards": 373,
+      "n_squares": 23872,
+      "n_squares_correct": 23771,
+      "per_square_accuracy": 0.9957691018766756,
+      "n_boards_exact": 327,
+      "board_accuracy": 0.8766756032171582
+    },
+    "cvchess_all": {
+      "n_boards": 352,
+      "n_squares": 22528,
+      "n_squares_correct": 22260,
+      "per_square_accuracy": 0.9881036931818182,
+      "n_boards_exact": 307,
+      "board_accuracy": 0.8721590909090909
+    }
+  },
+  "fresh_seed1_retraining": {
+    "checkpoint_sha256": "243ef74a49d18cb9f19f3be4f1a040ce3c332061fd494fef1b1fd3b0c2694d73",
+    "best_validation_board_accuracy": 0.9703453453453453,
+    "best_epoch_zero_based": 41,
+    "chessred_test": {
+      "n_boards": 2129,
+      "n_squares": 136256,
+      "n_squares_correct": 136238,
+      "per_square_accuracy": 0.9998678957256928,
+      "n_boards_exact": 2111,
+      "board_accuracy": 0.99154532644434
+    },
+    "chesscog_test": {
+      "n_boards": 342,
+      "n_squares": 21888,
+      "n_squares_correct": 21883,
+      "per_square_accuracy": 0.9997715643274854,
+      "n_boards_exact": 337,
+      "board_accuracy": 0.9853801169590644
+    },
+    "slcc_test": {
+      "n_boards": 373,
+      "n_squares": 23872,
+      "n_squares_correct": 23768,
+      "per_square_accuracy": 0.9956434316353887,
+      "n_boards_exact": 316,
+      "board_accuracy": 0.8471849865951743
+    },
+    "cvchess_all": {
+      "n_boards": 352,
+      "n_squares": 22528,
+      "n_squares_correct": 22350,
+      "per_square_accuracy": 0.9920987215909091,
+      "n_boards_exact": 289,
+      "board_accuracy": 0.8210227272727273
+    }
+  },
+  "environment": {
+    "python": "3.12.13",
+    "torch": "2.8.0+cu128",
+    "torchvision": "0.23.0",
+    "timm": "1.0.27",
+    "gpu": "NVIDIA GeForce RTX 4090"
+  }
+}

@@ -1,0 +1,163 @@
+[tool.poetry]
+name = "chessqueries"
+version = "0.1.0"
+description = "Chess board recognition: image -> per-square (FEN-like) board state via a ViT encoder + semantic square-query decoder."
+authors = ["Joel Seytre"]
+license = "PolyForm-Noncommercial-1.0.0"
+readme = "README.md"
+package-mode = true
+packages = [{ include = "chessqueries" }]
+
+[tool.poetry.urls]
+Paper = "https://arxiv.org/abs/2608.30762"
+Repository = "https://github.com/JSeytre/chessqueries"
+Dataset = "https://huggingface.co/datasets/joelseytre/slcc"
+"Model weights" = "https://huggingface.co/joelseytre/chessqueries"
+
+[tool.poetry.scripts]
+# Front door for the broadcast-dataset workflow (status/add/ingest/label/produce/…).
+chessqueries-annotate = "chessqueries.annotate.__main__:main"
+# Read boards off arbitrary photos: image(s) + checkpoint -> FEN (+ optional figure).
+chessqueries-predict = "chessqueries.models.predictor:main"
+# Local Gradio demo (upload photos -> boards); also serves an HTTP predict API.
+chessqueries-demo = "chessqueries.viz.demo:main"
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+
+# ---------------------------------------------------------------------------
+# Core ML runtime — encoder/decoder model, data, training, eval.
+# torch is pinned loosely (no custom CUDA source); the standard Linux PyPI
+# wheel ships CUDA.
+# ---------------------------------------------------------------------------
+torch = "^2.8"
+torchvision = "^0.23"
+timm = "^1.0"                 # pretrained ViT-B/14, ViT-L/14 encoders (DINOv2 etc.)
+pytorch-lightning = "^2.4"    # training loops + loading the ChessReD baseline ckpt
+torchmetrics = "^1.4"
+safetensors = "^0.8"          # safe, tensor-only release checkpoints
+
+# Data + notation + IO
+numpy = "^1.26"
+pandas = "^2.1"
+pillow = "^10.2"
+pyyaml = "^6.0"
+tqdm = "^4.66"
+requests = "^2.31"
+python-chess = "^1.999"       # FEN parsing/validation, board rendering helpers
+gdown = "^5.2"                # Google Drive downloads (ChessReD ckpt; CVChess folder)
+osfclient = "^0.0.5"          # OSF clone for the ChessCog synthetic dataset
+
+# Config
+pydantic = "^2.0"
+pydantic-settings = "^2.0"
+python-dotenv = "^1.0"
+
+# ---------------------------------------------------------------------------
+# Visualizer + demo — Gradio apps served on a port (chessqueries/viz/app.py is the
+# dataset browser, viz/demo.py the live-inference demo) plus figure rendering.
+# ---------------------------------------------------------------------------
+[tool.poetry.group.viz]
+optional = true
+[tool.poetry.group.viz.dependencies]
+gradio = "^5.0"
+matplotlib = "^3.7"
+cairosvg = "^2.7"             # rasterize the python-chess board SVGs (viz/render.py)
+
+# ---------------------------------------------------------------------------
+# Public SLCC reconstruction — validate the frozen metadata bundle, download
+# the pinned source streams, and crop frames. Kept separate from the producer
+# OCR stack so reviewers do not install PaddlePaddle merely to reconstruct data.
+# ---------------------------------------------------------------------------
+[tool.poetry.group.slcc]
+optional = true
+[tool.poetry.group.slcc.dependencies]
+huggingface-hub = "^1.0"      # fetch the versioned SLCC annotation bundle
+yt-dlp = {version = "*", extras = ["default"]} # matching yt-dlp-ejs solver package
+opencv-contrib-python = "4.10.0.84" # the repository's single cv2 distribution
+
+# ---------------------------------------------------------------------------
+# Annotation producer — build SLCC from YouTube + relay PGN. Heavy, optional;
+# not needed for train/eval or public reconstruction. PaddleOCR 3 uses the same
+# opencv-contrib-python distribution as the public reconstruction group.
+# ---------------------------------------------------------------------------
+[tool.poetry.group.annotate]
+optional = true
+[tool.poetry.group.annotate.dependencies]
+huggingface-hub = "^1.0"
+yt-dlp = {version = "*", extras = ["default"]}
+opencv-contrib-python = "4.10.0.84"
+scenedetect = "^0.6"          # shot/scene segmentation
+paddleocr = "^3.7"            # clock + player-name OCR (benchmark winner; see ocr_bench)
+paddlepaddle = "^3.2"         # PaddleOCR's inference backend
+
+# EasyOCR is deliberately not a Poetry group: it hard-depends on a second,
+# headless OpenCV distribution. Run that optional benchmark in a separate
+# environment so the production cv2/Paddle process keeps one native provider.
+
+# ---------------------------------------------------------------------------
+# LLM baseline — prompt a frontier VLM (Claude) with a test image and score its
+# FEN against the same metrics as our models (scripts/eval_llm_baseline.py).
+# Optional; needs ANTHROPIC_API_KEY. Not needed for train/eval of our own models.
+# ---------------------------------------------------------------------------
+[tool.poetry.group.llm]
+optional = true
+[tool.poetry.group.llm.dependencies]
+anthropic = "^0.120"
+openai = "^2.0"
+
+[tool.poetry.group.notebooks]
+optional = true
+[tool.poetry.group.notebooks.dependencies]
+jupyterlab = "^4.0"
+ipykernel = "^6.0"
+ipywidgets = "^8.0"
+matplotlib = "^3.7"
+seaborn = "^0.13"
+
+[tool.poetry.group.dev]
+optional = true
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+black = "^24.0"
+isort = "^5.12"
+flake8 = "^7.0"
+pyright = "*"
+ruff = "0.15.18"
+pre-commit = "4.5.1"
+
+# NOTE on ChessCog (deliberately NOT a Poetry group):
+# ChessCog pins `recap` + an old torch line that will not co-resolve with our
+# torch 2.x / py3.12 lock. Use it from a separate environment when comparing
+# against that upstream pipeline.
+pytest-cov = "^7.1.0"
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# Syntax errors, Pyflakes, and the low-ambiguity pycodestyle families only.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.pyright]
+typeCheckingMode = "basic"
+reportMissingImports = "warning"
+reportMissingTypeStubs = false
+exclude = [".venv", "**/__pycache__", "third_party", "data"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

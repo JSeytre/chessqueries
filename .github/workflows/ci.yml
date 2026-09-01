@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint and test (Python 3.12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      POETRY_VIRTUALENVS_IN_PROJECT: "true"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      # The runner image ships several Android SDK/NDK versions. This project
+      # does not use them, while the locked PyTorch CUDA wheels need the space.
+      - name: Free disk space for Python dependencies
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          df -h /
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry==2.2.1
+
+      - name: Cache the virtual environment
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-python-3.12-poetry-${{ hashFiles('poetry.lock') }}
+
+      - name: Install test dependencies
+        run: poetry --no-cache install --with dev,viz,slcc,annotate,llm --no-interaction
+
+      - name: Run Ruff without relying on Git metadata
+        run: poetry run ruff check .
+
+      - name: Validate SLCC metadata and synthetic reconstruction
+        run: >-
+          poetry run pytest -q
+          tests/test_slcc_release.py
+          tests/annotate/test_reconstruction_core.py
+          tests/annotate/test_public_reconstruction.py
+
+      - name: Run the test suite
+        run: poetry run pytest

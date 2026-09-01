@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use ChessQueries, please cite the paper below."
+title: ChessQueries
+type: software
+authors:
+  - family-names: Seytre
+    given-names: Joël
+repository-code: "https://github.com/JSeytre/chessqueries"
+url: "https://github.com/JSeytre/chessqueries"
+license: PolyForm-Noncommercial-1.0.0
+preferred-citation:
+  type: article
+  authors:
+    - family-names: Seytre
+      given-names: Joël
+  title: "ChessQueries: Toward Better Chess Board Recognition"
+  journal: arXiv
+  year: 2026
+  month: 8
+  doi: 10.48550/arXiv.2608.30762
+  url: "https://arxiv.org/abs/2608.30762"

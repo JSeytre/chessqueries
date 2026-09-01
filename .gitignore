@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Poetry / build
+dist/
+build/
+*.egg-info/
+.venv/
+venv/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Datasets (large; downloaded via scripts/download_data.py) and checkpoints.
+# The frozen SLCC v1 metadata bundle also lives under data/ (fetched/validated
+# by chessqueries.annotate.release); make_supplementary.sh vendors it into the
+# reviewer zip from this local cache — it is deliberately not tracked in git.
+/data/
+/checkpoints/
+*.ckpt
+*.pth
+
+# Eval outputs / reports
+/reports/
+/outputs/
+/minimal_reproduction/runs/
+
+# Local-only: run logbook + raw eval-result dumps (kept on disk, not committed)
+/docs/log/
+/docs/results/
+/docs/tmp/
+
+# Local-only: human-labeled broadcast layout registry (large; built by the
+# annotate labeler, like data/ — kept on disk, not committed) + its .bak rotation
+# and the fitted PCA the DINOv2 shot descriptor projects through (rebuilt locally).
+/chessqueries/annotate/resources/slcc_layouts.json
+/chessqueries/annotate/resources/slcc_layouts.json.bak
+/chessqueries/annotate/resources/slcc_grid3_pca.npz
+
+# Vendored external repos (cloned for the ChessCog comparison; env + models live outside git)
+/third_party/
+
+# Paper: its own git repo, tracked separately from the ML code (never a chessqueries PR)
+/paper/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/*-checkpoint.ipynb
+
+# IDE / OS
+.claude/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local-only: GPU/queue-specific experiment watchdog (machine-specific paths)
+/scripts/exp_watchdog.py
+
+# Supplementary export (scripts/make_supplementary.sh)
+/chessqueries-supplementary.zip
