@@ -43,37 +43,6 @@ On first use, both commands download and verify the 1.49 GB
 [safetensors checkpoint](https://huggingface.co/joelseytre/chessqueries), then
 cache it under `checkpoints/release/`.
 
-## ChessQueriesLite: ViT-S/14 ONNX
-
-The smaller ViT-S/14 model accepts 644 × 644 images and is available as two
-self-contained [ONNX files](https://huggingface.co/joelseytre/chessqueries#chessquerieslite-vit-s14-onnx):
-FP32 (127.57 MB) and dynamic INT8 (36.03 MB). Both contain the trained encoder
-and decoder. The accuracy table above describes the ViT-L model.
-
-For CPU inference with Python 3.12, run these commands from this repository:
-
-```bash
-python3.12 -m venv .venv-onnx
-.venv-onnx/bin/python -m pip install numpy==1.26.4 onnxruntime==1.23.2 Pillow==10.4.0
-curl --fail --location \
-  https://huggingface.co/joelseytre/chessqueries/resolve/main/chessquerieslite-vits-644-int8.onnx \
-  --output chessquerieslite-vits-644-int8.onnx
-.venv-onnx/bin/python chessqueries/models/predict_onnx.py photo.jpg \
-  --model chessquerieslite-vits-644-int8.onnx
-```
-
-For FP32, replace `int8` with `fp32` in the download URL and both file paths.
-Only the selected model needs to be downloaded. This standalone runner needs
-NumPy, ONNX Runtime, and Pillow; it verifies the model's SHA-256 before loading.
-It prints JSON containing 64 class IDs and FEN piece placement. Side to move,
-castling rights, en passant, and move counters cannot be inferred from a photo.
-
-The runner converts to RGB, resizes each floating-point channel to 644 × 644
-using antialiased bilinear interpolation, then applies ImageNet normalization.
-It ignores EXIF orientation to match the export reference; add `--exif` to apply
-the photo's orientation. The full input/output contract and model hashes are in
-the [model card](https://huggingface.co/joelseytre/chessqueries#chessquerieslite-vit-s14-onnx).
-
 ## Citation
 
 ```bibtex
