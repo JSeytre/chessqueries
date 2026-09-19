@@ -3,9 +3,13 @@
 Chess board recognition: provide a photo of a real-life chessboard and receive
 its chess position.
 
+🌐 [Demo](https://chessq.org) ·
 📄 [Paper](https://arxiv.org/abs/2608.30762) ·
 📊 [Dataset](https://huggingface.co/datasets/joelseytre/slcc) ·
 🤖 [Model weights](https://huggingface.co/joelseytre/chessqueries)
+
+[Try it online](https://chessq.org). The website uses a ChessQueries model further
+trained on proprietary data.
 
 ![ChessQueries predictions across ChessReD, ChessCog, SLCC, and CVChess](assets/readme/hero.jpg)
 
@@ -77,3 +81,7 @@ training and evaluation commands, experiment utilities, and checks.
 See the [minimal reproduction guide](minimal_reproduction/README.md) for a
 self-contained implementation of the model, training, evaluation, and leakage
 checks used in the paper.
+
+## Contact
+
+Questions and enquiries: contact "at" chessq.org
