@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,15 @@ REQUIRED_METADATA = {
     "normalization",
     "license",
 }
+
+
+class CheckpointPrecision(StrEnum):
+    FP32 = "fp32"
+    FP16 = "fp16"
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return torch.float16 if self is self.FP16 else torch.float32
 
 
 def sha256_file(path: Path) -> str:
@@ -60,6 +70,10 @@ def load_safetensors_model(path: Path, *, device: str = "cpu") -> ChessQueriesMo
     """Reconstruct a ChessQueries model from a tensor-only release artifact."""
     path = Path(path)
     metadata = read_safetensors_metadata(path)
+    precision = CheckpointPrecision(metadata.get("precision", "fp32"))
+    state = load_file(str(path), device="cpu")
+    if any(t.is_floating_point() and t.dtype != precision.dtype for t in state.values()):
+        raise ValueError("checkpoint tensors do not match the declared precision")
     model = ChessQueriesModel(
         encoder_name=metadata["encoder_name"],
         pretrained=False,
@@ -69,8 +83,8 @@ def load_safetensors_model(path: Path, *, device: str = "cpu") -> ChessQueriesMo
         aux_heads=_as_bool(metadata["aux_heads"], "aux_heads"),
         drop_path_rate=float(metadata["drop_path_rate"]),
         head_type=metadata["head_type"],
-    )
-    model.load_state_dict(load_file(str(path), device="cpu"), strict=True)
+    ).to(dtype=precision.dtype)
+    model.load_state_dict(state, strict=True)
     return model.to(device).eval()
 
 

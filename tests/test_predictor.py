@@ -61,6 +61,23 @@ def test_predict_batches_and_resizes(images, boards):
     assert stub.batch_shapes == [(2, 3, 64, 64), (1, 3, 64, 64)]
 
 
+def test_fp16_inputs_keep_float32_preprocessing_and_default_to_batch_one(images, boards):
+    class HalfRecognizer(StubRecognizer):
+        def __init__(self):
+            super().__init__(boards)
+            self.weight = torch.nn.Parameter(torch.zeros(1, dtype=torch.float16))
+
+        def predict_labels(self, x):
+            assert x.dtype == torch.float16
+            return super().predict_labels(x)
+
+    model = HalfRecognizer()
+    predictor = Predictor(model, resolution=32)
+    assert predictor._load(images[0]).dtype == torch.float32
+    predictor.predict(images)
+    assert model.batch_shapes == [(1, 3, 32, 32)] * len(images)
+
+
 def test_alpha_and_grayscale_become_three_channels(images, boards):
     stub = StubRecognizer(boards)
     Predictor(stub, resolution=32).predict(images, batch_size=1)
