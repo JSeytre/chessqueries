@@ -97,6 +97,8 @@ class Predictor:
             from chessqueries.models.checkpoint import load_safetensors_model
 
             model = load_safetensors_model(checkpoint, device=device)
+            if torch.device(device).type == "cpu":
+                model = model.float()
         else:
             from chessqueries.train.lit import LitChessQueriesModel
 
@@ -105,17 +107,19 @@ class Predictor:
         return cls(model, resolution=resolution, device=device)
 
     @torch.no_grad()
-    def predict(self, paths: Sequence[Path | str], *, batch_size: int = 8) -> list[Prediction]:
+    def predict(self, paths: Sequence[Path | str], *, batch_size: int = 1) -> list[Prediction]:
         """Predict a board per image, in the order the paths were given."""
         paths = [Path(p) for p in paths]
         if not paths:
             return []
         out: list[Prediction] = []
+        parameter = next(self.model.parameters(), None)
+        dtype = parameter.dtype if parameter is not None else torch.float32
         for start in range(0, len(paths), batch_size):
             chunk = paths[start : start + batch_size]
             # Transform per image before stacking: arbitrary photos differ in size,
             # and the resize to a square `resolution` is what makes them stackable.
-            batch = torch.stack([self._load(p) for p in chunk]).to(self.device)
+            batch = torch.stack([self._load(p) for p in chunk]).to(self.device, dtype=dtype)
             labels = self.model.predict_labels(batch).cpu()
             out.extend(
                 Prediction(image_path=p, board=Board.from_tensor(labels[i]))
@@ -143,7 +147,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     p.add_argument("--resolution", type=int, default=PAPER_RESOLUTION,
                    help="must match the checkpoint's training resolution")
     p.add_argument("--device", default=None, help="default: cuda when available")
-    p.add_argument("--batch-size", type=int, default=8)
+    p.add_argument("--batch-size", type=int, default=1)
     p.add_argument("--json", action="store_true", help="emit JSON records instead of TSV")
     p.add_argument("--viz", type=Path, default=None,
                    help="also write an input-vs-predicted-board figure to this path")

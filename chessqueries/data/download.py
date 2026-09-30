@@ -41,13 +41,13 @@ CHESSRED_CKPT_SHA256 = "a37eec7d804254b68aa317efef8e720f43113a62ab21380a9b4c8bc8
 CHESSRED_IMAGE_COUNT = sum(FROZEN_SAMPLE_COUNTS[DatasetName.CHESSRED].values())
 
 # --- ChessQueries model weights (project-controlled) --------------------- #
-RELEASE_CHECKPOINT_FILENAME = "chessqueries-vitL14-644-joint.safetensors"
+RELEASE_CHECKPOINT_FILENAME = "chessqueries-vitl-644-safetensors-fp16-r1.safetensors"
 RELEASE_CHECKPOINT_URL = (
-    "https://huggingface.co/joelseytre/chessqueries/resolve/main/"
+    "https://huggingface.co/joelseytre/chessqueries/resolve/529059bd7f00c3b7d39ecdf6cc2fef5d039fc3cf/"
     f"{RELEASE_CHECKPOINT_FILENAME}"
 )
 RELEASE_CHECKPOINT_SHA256 = (
-    "6151bdd98fbe25f32080c097eba7ae75808b5615160e4867240931085fc762e5"
+    "45edb69bf156f94299256fc51d1c75805f1de745ecfe34dc0615ef21265ab506"
 )
 
 # --- ChessCog (OSF) --------------------------------------------------------- #

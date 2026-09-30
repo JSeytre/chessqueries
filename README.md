@@ -43,9 +43,14 @@ You can also predict directly from one or more images:
 poetry run chessqueries-predict photo.jpg --viz prediction.png
 ```
 
-On first use, both commands download and verify the 1.49 GB
+On first use, both commands download and verify the FP16 paper ViT-L
 [safetensors checkpoint](https://huggingface.co/joelseytre/chessqueries), then
-cache it under `checkpoints/release/`.
+cache it under `checkpoints/release/`. CUDA runs in FP16; CPU uses the same
+download with FP32 arithmetic. Preprocessing stays FP32; the default batch size is one.
+
+For other checkpoints and their download instructions, see the Hugging Face
+pages for [paper models](https://huggingface.co/joelseytre/chessqueries) and
+[ChessQ Lite](https://huggingface.co/joelseytre/chessq-lite).
 
 ## Citation
 
