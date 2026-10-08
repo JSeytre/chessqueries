@@ -1,3 +1,5 @@
+**♟️ Update: now used on the 2nd-biggest chess website, the fully open-source and non-profit [lichess.org](lichess.org) (see announcement [here](https://lichess.org/feed#dfs7OI))**
+
 # ChessQueries
 
 Chess board recognition: provide a photo of a real-life chessboard and receive
