@@ -92,3 +92,7 @@ checks used in the paper.
 ## Contact
 
 Questions and enquiries: contact "at" chessq.org
+
+## ChessQ Lite V5
+
+[Run FP16 or INT8 inference with viewing direction](chessqueries/PORTABLE.md).

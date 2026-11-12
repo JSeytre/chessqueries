@@ -11,7 +11,13 @@ from torch import nn
 from torch.nn import functional as F
 
 from chessqueries.core import NUM_PIECES, ALL_SQUARES, Color, Piece, PieceType
-from chessqueries.models.base import BoardRecognizer
+from chessqueries.models.base import BoardRecognizer, Recognition
+from chessqueries.models.direction import OrientationPredictor
+
+
+class OrientationMode(str, Enum):
+    NONE = "none"
+    AUXILIARY = "auxiliary"
 
 
 class HeadType(str, Enum):
@@ -87,10 +93,14 @@ class ChessQueriesModel(BoardRecognizer):
         aux_heads: bool = False,
         drop_path_rate: float = 0.0,
         head_type: HeadType | str = HeadType.QUERY,
+        orientation_mode: OrientationMode | str = OrientationMode.NONE,
     ) -> None:
         super().__init__()
         # str accepted for checkpoint hparams round-trips; unknown values raise here.
         self.head_type = HeadType(head_type)
+        self.orientation_mode = OrientationMode(orientation_mode)
+        if self.orientation_mode is not OrientationMode.NONE and self.head_type is not HeadType.QUERY:
+            raise ValueError("auxiliary direction requires the square-query decoder")
         self.encoder = timm.create_model(
             encoder_name, pretrained=pretrained, num_classes=0, dynamic_img_size=True,
             drop_path_rate=drop_path_rate,
@@ -114,6 +124,9 @@ class ChessQueriesModel(BoardRecognizer):
         self.norm = nn.LayerNorm(dim)
         self.head = nn.Linear(dim, NUM_CLASSES)  # shared across all 64 squares
 
+        if self.orientation_mode is OrientationMode.AUXILIARY:
+            self.orientation_predictor = OrientationPredictor(dim)
+
         # Auxiliary piece-type / colour heads (multi-task): extra structured
         # supervision targeting tall-piece->pawn confusions. Off by default.
         self.aux_heads = aux_heads
@@ -135,6 +148,9 @@ class ChessQueriesModel(BoardRecognizer):
 
     def features(self, x: torch.Tensor) -> torch.Tensor:
         memory = self.encode(x)  # (B, N, dim)
+        return self.decode_features(memory)
+
+    def decode_features(self, memory: torch.Tensor) -> torch.Tensor:
         if self.head_type is HeadType.LINEAR:
             patch = memory[:, self.encoder.num_prefix_tokens:, :]  # drop CLS/register tokens
             b, p, d = patch.shape
@@ -143,7 +159,7 @@ class ChessQueriesModel(BoardRecognizer):
             pooled = F.adaptive_avg_pool2d(grid, (8, 8))  # (B, dim, 8, 8) -> one cell per square
             h = pooled.flatten(2).transpose(1, 2)  # (B, 64, dim), FEN order a8..h1
             return self.norm(h)
-        q = self.queries(x.shape[0])  # (B, 64, dim)
+        q = self.queries(memory.shape[0])  # (B, 64, dim)
         h = self.decoder(q, memory)  # (B, 64, dim)
         return self.norm(h)  # (B, 64, dim)
 
@@ -163,3 +179,11 @@ class ChessQueriesModel(BoardRecognizer):
     @torch.no_grad()
     def predict_labels(self, x: torch.Tensor) -> torch.Tensor:
         return self.forward(x).argmax(dim=-1)  # (B, 64), already our label space
+
+    @torch.no_grad()
+    def recognize(self, x: torch.Tensor) -> Recognition:
+        if self.orientation_mode is OrientationMode.NONE:
+            return super().recognize(x)
+        memory = self.encode(x)
+        logits = self.head(self.decode_features(memory))
+        return Recognition(logits.argmax(dim=-1), self.orientation_predictor(memory))
