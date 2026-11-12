@@ -1,6 +1,7 @@
 **♟️ ChessQ models are now integrated into**
 - [lichess.org](lichess.org), 2nd-biggest chess website, fully open-source and non-profit (see announcement [here](https://lichess.org/feed#dfs7OI))
 - [ChessCam](https://www.chesscam.net/), chess video to PGN, code available [here](https://github.com/Pbatch/ChessCam), HuggingFace repository [here](https://huggingface.co/PBatch23888/chessq-chesscam)
+- [CameraChess](https://camerachess.com/), lets you play a bot via your webcam, code available [here](https://github.com/AmethystineAlpaca/camera_chess)
 - [ChessBar](https://www.chess-bar.com/), organizer of real-life chess meetups
 
 # ChessQueries
