@@ -11,7 +11,7 @@ import torch
 from safetensors import safe_open
 from safetensors.torch import load_file, save_file
 
-from chessqueries.models.chessqueries_model import ChessQueriesModel, HeadType
+from chessqueries.models.chessqueries_model import ChessQueriesModel, HeadType, OrientationMode
 
 FORMAT_NAME = "chessqueries-safetensors-v1"
 WEIGHTS_LICENSE = "PolyForm-Noncommercial-1.0.0"
@@ -63,6 +63,9 @@ def read_safetensors_metadata(path: Path) -> dict[str, str]:
         raise ValueError(f"ChessQueries safetensors metadata is missing: {missing}")
     if metadata["format"] != FORMAT_NAME:
         raise ValueError(f"unsupported ChessQueries safetensors format: {metadata['format']!r}")
+    OrientationMode(metadata.get("orientation_mode", OrientationMode.NONE))
+    if metadata.get("orientation_representation", "direction") != "direction":
+        raise ValueError("only auxiliary direction is supported")
     return metadata
 
 
@@ -83,6 +86,8 @@ def load_safetensors_model(path: Path, *, device: str = "cpu") -> ChessQueriesMo
         aux_heads=_as_bool(metadata["aux_heads"], "aux_heads"),
         drop_path_rate=float(metadata["drop_path_rate"]),
         head_type=metadata["head_type"],
+        **({"orientation_mode": OrientationMode(metadata["orientation_mode"])}
+           if metadata.get("orientation_mode", "none") != "none" else {}),
     ).to(dtype=precision.dtype)
     model.load_state_dict(state, strict=True)
     return model.to(device).eval()

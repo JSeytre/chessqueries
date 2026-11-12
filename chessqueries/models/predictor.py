@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from collections.abc import Sequence
 from contextlib import redirect_stdout
@@ -17,7 +18,7 @@ from pathlib import Path
 import torch
 from torchvision.io import ImageReadMode, read_image
 
-from chessqueries.core import Board
+from chessqueries.core import Board, Color
 from chessqueries.data.download import AnonymizedArtifactError, download_release_checkpoint
 from chessqueries.data.transforms import build_transform
 from chessqueries.models.base import BoardRecognizer
@@ -26,6 +27,7 @@ from chessqueries.models.base import BoardRecognizer
 # LitChessQueriesModel hyperparameter (it belongs to the data module), so it cannot be
 # recovered from a checkpoint file — every entrypoint has to state it explicitly.
 PAPER_RESOLUTION = 644
+WHITE_VIEW_COSINE = math.cos(math.radians(100))
 
 
 def resolve_checkpoint(checkpoint: Path | str | None) -> Path:
@@ -51,6 +53,17 @@ class Prediction:
 
     image_path: Path
     board: Board
+    orientation: Color | None = None
+    viewing_direction: tuple[float, float] | None = None
+
+    def __post_init__(self) -> None:
+        if self.orientation is not None and not isinstance(self.orientation, Color):
+            raise TypeError("orientation must be a Color")
+        if self.viewing_direction is not None:
+            c, s = self.viewing_direction
+            if (not all(math.isfinite(v) and abs(v) <= 1 for v in (c, s))
+                    or abs(math.hypot(c, s) - 1) > 1e-4):
+                raise ValueError("viewing direction must be a finite unit vector")
 
     @property
     def fen(self) -> str:
@@ -58,15 +71,22 @@ class Prediction:
 
     @property
     def lichess_url(self) -> str:
+        if self.orientation is not None:
+            return f"https://lichess.org/analysis/{self.fen.replace(' ', '_')}?color={self.orientation.value}"
         return self.board.lichess_url()
 
-    def to_record(self) -> dict[str, str]:
+    def to_record(self) -> dict:
         """The serialized (JSON/API) shape."""
-        return {
+        record = {
             "image": str(self.image_path),
             "fen": self.fen,
             "lichess_url": self.lichess_url,
         }
+        if self.orientation is not None:
+            record["orientation"] = self.orientation.value
+        if self.viewing_direction is not None:
+            record["viewing_direction"] = dict(zip(("cos", "sin"), self.viewing_direction, strict=True))
+        return record
 
 
 class Predictor:
@@ -90,6 +110,15 @@ class Predictor:
         resolution: int = PAPER_RESOLUTION,
         device: str | None = None,
     ) -> "Predictor":
+        if Path(checkpoint).suffix == ".onnx":
+            from chessqueries.models.portable import PortableRecognizer
+
+            if device is not None and torch.device(device).type != "cpu":
+                raise ValueError("the Python ONNX runner requires --device cpu")
+            model = PortableRecognizer(checkpoint)
+            if resolution != model.resolution:
+                raise ValueError("resolution disagrees with the model")
+            return cls(model, resolution=model.resolution, device="cpu")
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         checkpoint = Path(checkpoint)
@@ -102,7 +131,9 @@ class Predictor:
         else:
             from chessqueries.train.lit import LitChessQueriesModel
 
-            lit = LitChessQueriesModel.load_from_checkpoint(str(checkpoint), map_location=device)
+            lit = LitChessQueriesModel.load_from_checkpoint(
+                str(checkpoint), map_location=device, pretrained=False,
+            )
             model = lit.model.eval().to(device)
         return cls(model, resolution=resolution, device=device)
 
@@ -110,26 +141,38 @@ class Predictor:
     def predict(self, paths: Sequence[Path | str], *, batch_size: int = 1) -> list[Prediction]:
         """Predict a board per image, in the order the paths were given."""
         paths = [Path(p) for p in paths]
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
         if not paths:
             return []
         out: list[Prediction] = []
-        parameter = next(self.model.parameters(), None)
-        dtype = parameter.dtype if parameter is not None else torch.float32
         for start in range(0, len(paths), batch_size):
             chunk = paths[start : start + batch_size]
             # Transform per image before stacking: arbitrary photos differ in size,
             # and the resize to a square `resolution` is what makes them stackable.
-            batch = torch.stack([self._load(p) for p in chunk]).to(self.device, dtype=dtype)
-            labels = self.model.predict_labels(batch).cpu()
+            parameter = next(self.model.parameters(), None)
+            batch = torch.stack([self.prepare_image(p) for p in chunk]).to(
+                device=self.device, dtype=parameter.dtype if parameter is not None else torch.float32,
+            )
+            result = self.model.recognize(batch)
+            labels = result.labels.cpu()
+            directions = result.directions.cpu() if result.directions is not None else None
             out.extend(
-                Prediction(image_path=p, board=Board.from_tensor(labels[i]))
+                Prediction(image_path=p, board=Board.from_tensor(labels[i]),
+                           orientation=(None if directions is None else
+                                        Color.BLACK if directions[i, 0] < WHITE_VIEW_COSINE else Color.WHITE),
+                           viewing_direction=(None if directions is None else
+                                              tuple(float(v) for v in directions[i])))
                 for i, p in enumerate(chunk)
             )
         return out
 
-    def _load(self, path: Path) -> torch.Tensor:
+    def prepare_image(self, path: Path | str) -> torch.Tensor:
         # RGB mode drops alpha and expands grayscale: uploads are not dataset images.
         return self._transform(read_image(str(path), mode=ImageReadMode.RGB).float())
+
+    def _load(self, path: Path) -> torch.Tensor:
+        return self.prepare_image(path)
 
 
 def main(argv: Sequence[str] | None = None) -> None:
